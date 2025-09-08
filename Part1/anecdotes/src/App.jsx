@@ -1,6 +1,9 @@
 import { useState } from "react";
 
+
 const Button = (props) => {
+  
+  console.log("props inside button" , props)
   return <button onClick={props.onClick}>{props.text}</button>;
 };
 
