@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const baseUrl = "http://localhost:3001/api/persons";
+const baseUrl = "/api/persons";
 
 /* if resolved a promise is returned that contains the response.data Using promise chaining*/
 const getAll = () => {
