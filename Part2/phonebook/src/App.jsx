@@ -2,217 +2,215 @@ import { useState, useEffect } from "react";
 import meow from "../services/persons";
 import "./index.css";
 
-const Filter = (props) => {
-  console.log(props);
+/* ---------------- NOTIFICATION ---------------- */
+
+const Notification = ({ message, error }) => {
+  if (!message) return null;
+
   return (
-    <>
-      filter shown with{" "}
-      <input value={props.newFilter} onChange={props.handleFilter}></input>
-    </>
+    <div className={error ? "error" : "success"}>
+      {message}
+    </div>
   );
 };
 
-const Notification = ({ error, message }) => {
-  if (error == true) {
-    return <div className="error">{message}</div>;
-  } else if (message === null) {
-    return;
-  }
+/* ---------------- FILTER ---------------- */
 
-  return <div className="success">{message}</div>;
-};
+const Filter = ({ newFilter, handleFilter }) => (
+  <div>
+    filter shown with{" "}
+    <input value={newFilter} onChange={handleFilter} />
+  </div>
+);
 
-const PersonForm = (props) => {
-  console.log(props);
-  return (
-    <form onSubmit={props.handleSubmit}>
-      <div>
-        name: <input value={props.newName} onChange={props.handleInput} />
-      </div>
-      <div>
-        number: <input value={props.newNumber} onChange={props.handleNumber} />
-      </div>
-      <div>
-        <button type="submit">add</button>
-      </div>
-    </form>
+/* ---------------- FORM ---------------- */
+
+const PersonForm = ({
+  handleSubmit,
+  newName,
+  newNumber,
+  handleName,
+  handleNumber,
+}) => (
+  <form onSubmit={handleSubmit}>
+    <div>
+      name: <input value={newName} onChange={handleName} />
+    </div>
+    <div>
+      number: <input value={newNumber} onChange={handleNumber} />
+    </div>
+    <button type="submit">add / update</button>
+  </form>
+);
+
+/* ---------------- PERSON LIST ---------------- */
+
+const Persons = ({ persons, filter, handleDelete }) => {
+  const filtered = persons.filter(p =>
+    p.name.toLowerCase().includes(filter.toLowerCase())
   );
-};
-const Persons = (props) => {
-  const filteredPersons = props.persons.filter((person) => {
-    return props.newFilter.length === 0
-      ? person
-      : person.name.toLowerCase().includes(props.newFilter.toLowerCase());
-  });
 
-  return filteredPersons.map((person) => {
-    return (
-      <div key={person.id}>
-        <p key={person.id}>
-          {person.name} {person.number}
-          <button
-            onClick={() => {
-              props.handleDeleteOf(person.id);
-            }}
-          >
-            Delete
+  return (
+    <div>
+      {filtered.map(person => (
+        <div key={person.id}>
+          {person.name} {person.number}{" "}
+          <button onClick={() => handleDelete(person.id, person.name)}>
+            delete
           </button>
-        </p>
-      </div>
-    );
-  });
+        </div>
+      ))}
+    </div>
+  );
 };
+
+/* ---------------- APP ---------------- */
 
 const App = () => {
   const [persons, setPersons] = useState([]);
   const [newName, setNewName] = useState("");
   const [newNumber, setNewNumber] = useState("");
   const [newFilter, setNewFilter] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(null);
   const [error, setError] = useState(false);
 
+  /* ---------------- LOAD DATA ---------------- */
+
   useEffect(() => {
-    meow.getAll().then((allPersons) => {
-      console.log(allPersons);
-      setPersons(allPersons);
-    });
+    meow.getAll()
+      .then(data => setPersons(data))
+      .catch(() => {
+        setMessage("Failed to load data");
+        setError(true);
+
+        setTimeout(() => {
+          setMessage(null);
+          setError(false);
+        }, 3000);
+      });
   }, []);
 
-  const handleInput = (event) => {
-    console.log(event.target.value);
-    setNewName(event.target.value);
-  };
+  /* ---------------- MESSAGE HELPER ---------------- */
 
-  const handleDeleteOf = (id) => {
-    const name = persons.find((person) => {
-      return person.id === id;
-    });
+  const showMessage = (msg, isError = false) => {
+    setMessage(msg);
+    setError(isError);
 
-    if (window.confirm(`Are you sure you want to delete ${name.name}`)) {
-      const timeoutFunction = setTimeout(() => {
-        setMessage(null);
-        setError(false);
-      }, 3000);
-      meow.deletePerson(id).then((person) => {
-        // console.log(person);
-        setMessage(`${person.name} has been successfully deleted`);
-        setError(false);
-        timeoutFunction();
-      });
-      setPersons(
-        persons.filter((person) => {
-          return person.id !== id;
-        })
-      );
-    } else {
-      console.log("AHAHHAH");
-    }
-  };
-
-  const handleNumber = (event) => {
-    console.log(event.target.value);
-    setNewNumber(event.target.value);
-  };
-
-  const handleFilter = (event) => {
-    console.log(event.target.value);
-    setNewFilter(event.target.value);
-  };
-
-  const handleSubmit = (event) => {
-    const timeoutFunction = setTimeout(() => {
+    setTimeout(() => {
       setMessage(null);
       setError(false);
     }, 3000);
-    event.preventDefault();
+  };
 
-    let personEdited = false;
-    persons.find((person) => {
-      if (person.name === newName && person.number === newNumber) {
-        // alert(`${newName} already exists with the number ${newNumber}`);
-        setMessage(`${newName} already exists with the number ${newNumber}`);
-        setError(true);
+  /* ---------------- ADD / UPDATE ---------------- */
 
-        timeoutFunction();
-        personEdited = true;
-      } else if (person.name === newName && person.number !== newNumber) {
-        personEdited = true;
-        if (
-          window.confirm(
-            `${newName} is already added to the phone. Do you want to update the number?`
-          )
-        ) {
-          const newPersonObject = { name: newName, number: newNumber };
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
-          meow
-            .editNumber(person.id, newPersonObject)
-            .then((newPerson) => {
-              const newPersonsArray = persons.map((person) => {
-                return person.name === newPerson.name ? newPerson : person;
-              });
+    const existing = persons.find(p => p.name === newName);
 
-              setMessage(`Successfully updated ${newName}'s number`);
-              setError(false);
+    /* -------- UPDATE -------- */
+    if (existing) {
+      const confirmUpdate = window.confirm(
+        `${newName} already exists. Replace the old number?`
+      );
 
-              timeoutFunction();
+      if (!confirmUpdate) return;
 
-              setPersons(newPersonsArray);
-              setNewName("");
-              setNewNumber("");
-            })
-            .catch((error) => {
-              setMessage(
-                `Information of ${person.name} has already been removed from the server`
-              );
-              setError(true);
+      const updatedPerson = {
+        name: newName,
+        number: newNumber,
+      };
 
-              setPersons(persons.filter((p) => p.name !== person.name));
+      meow.editNumber(existing.id, updatedPerson)
+        .then(returned => {
+          setPersons(prev =>
+            prev.map(p => p.id === existing.id ? returned : p)
+          );
 
-              timeoutFunction();
-            });
-        }
-      }
-    });
-    if (personEdited) {
+          setNewName("");
+          setNewNumber("");
+          showMessage(`Updated ${returned.name}`);
+        })
+        .catch(() => {
+          setPersons(prev =>
+            prev.filter(p => p.id !== existing.id)
+          );
+
+          showMessage(
+            `${newName} was already removed from server`,
+            true
+          );
+        });
+
       return;
-    } else {
-      const newPersonObject = { name: newName, number: newNumber };
+    }
 
-      meow.create(newPersonObject).then((newPerson) => {
-        setPersons(persons.concat(newPerson));
+    /* -------- CREATE -------- */
+    const newPerson = {
+      name: newName,
+      number: newNumber,
+    };
+
+    meow.create(newPerson)
+      .then(returned => {
+        setPersons(prev => [...prev, returned]);
         setNewName("");
         setNewNumber("");
-
-        setMessage(
-          `Successfully added ${newPerson.name} with number ${newPerson.number}`
+        showMessage(`Added ${returned.name}`);
+      })
+      .catch(error => {
+        showMessage(
+          error?.response?.data?.error || "Error adding person",
+          true
         );
-        setError(false);
-
-        timeoutFunction();
       });
-    }
   };
+
+  /* ---------------- DELETE ---------------- */
+
+  const handleDelete = (id, name) => {
+    if (!window.confirm(`Delete ${name}?`)) return;
+
+    meow.deletePerson(id)
+      .then(() => {
+        setPersons(prev => prev.filter(p => p.id !== id));
+        showMessage(`Deleted ${name}`);
+      })
+      .catch(() => {
+        showMessage(`Failed to delete ${name}`, true);
+      });
+  };
+
+  /* ---------------- RENDER ---------------- */
 
   return (
     <div>
       <h2>Phonebook</h2>
-      <Notification error={error} message={message} />
-      <Filter newFilter={newFilter} handleFilter={handleFilter} />
+
+      <Notification message={message} error={error} />
+
+      <Filter
+        newFilter={newFilter}
+        handleFilter={(e) => setNewFilter(e.target.value)}
+      />
 
       <h3>add a new</h3>
+
       <PersonForm
         handleSubmit={handleSubmit}
         newName={newName}
         newNumber={newNumber}
-        handleInput={handleInput}
-        handleNumber={handleNumber}
+        handleName={(e) => setNewName(e.target.value)}
+        handleNumber={(e) => setNewNumber(e.target.value)}
       />
 
       <h3>Numbers</h3>
+
       <Persons
         persons={persons}
-        newFilter={newFilter}
-        handleDeleteOf={handleDeleteOf}
+        filter={newFilter}
+        handleDelete={handleDelete}
       />
     </div>
   );

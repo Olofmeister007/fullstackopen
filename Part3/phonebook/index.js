@@ -73,6 +73,7 @@ app.get("/api/persons", (req, res, next) => {
 
 app.get("/info", (req, res) => {
   Person.find({}).then((persons)=> {
+    
     return res.send(`Phonebook has info for ${persons.length} people <br><br>${new Date()}`,)
   })
   
@@ -104,6 +105,7 @@ app.get("/api/persons/:id", (req, res, next) => {
       if (!person) {
         return res.status(404).json({ error: "not found" });
       }
+      console.log(person);
       res.json(person);
     })
     .catch(error => next(error)); 
@@ -150,7 +152,8 @@ app.put("/api/persons/:id", (req, res, next) => {
     { new: true, runValidators: true }
   )
     .then(updatedPerson => {
-      res.json(updatedPerson);
+      console.log(updatedPerson);
+      res.json(updatedPerson.toJSON());
     })
     .catch(error => next(error));
 });
