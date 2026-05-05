@@ -1,10 +1,10 @@
 const express = require("express");
 const cors = require("cors");
-require('dotenv').config()
+require("dotenv").config();
 const Person = require("./models/mongoose");
 
 const app = express();
-app.use(express.static('dist'))
+app.use(express.static("dist"));
 
 var morgan = require("morgan");
 app.use(cors());
@@ -22,12 +22,11 @@ app.use(
 const errorHandler = (error, req, res, next) => {
   console.log(error.message);
 
-  if(error.name === "CastError")
-  {
-    return res.status(400).send({ error: "malformatted id"})
+  if (error.name === "CastError") {
+    return res.status(400).send({ error: "malformatted id" });
   }
   next(error);
-}
+};
 
 // app.get("/", function (req, res) {
 //   res.send("hello, world!");
@@ -67,16 +66,16 @@ const errorHandler = (error, req, res, next) => {
 // app.use(requestLogger);
 app.get("/api/persons", (req, res, next) => {
   Person.find({})
-    .then(persons => res.json(persons))
-    .catch(error => next(error)); 
+    .then((persons) => res.json(persons))
+    .catch((error) => next(error));
 });
 
 app.get("/info", (req, res) => {
-  Person.find({}).then((persons)=> {
-    
-    return res.send(`Phonebook has info for ${persons.length} people <br><br>${new Date()}`,)
-  })
-  
+  Person.find({}).then((persons) => {
+    return res.send(
+      `Phonebook has info for ${persons.length} people <br><br>${new Date()}`,
+    );
+  });
 });
 
 // app.get("/api/persons/:id", (req, res) => {
@@ -101,14 +100,14 @@ app.get("/info", (req, res) => {
 
 app.get("/api/persons/:id", (req, res, next) => {
   Person.findById(req.params.id)
-    .then(person => {
+    .then((person) => {
       if (!person) {
         return res.status(404).json({ error: "not found" });
       }
       console.log(person);
       res.json(person);
     })
-    .catch(error => next(error)); 
+    .catch((error) => next(error));
 });
 
 // app.delete("/api/persons/:id", (req, res) => {
@@ -124,7 +123,7 @@ app.get("/api/persons/:id", (req, res, next) => {
 app.delete("/api/persons/:id", (req, res, next) => {
   Person.findByIdAndDelete(req.params.id)
     .then(() => res.status(204).end())
-    .catch(error => next(error)); 
+    .catch((error) => next(error));
 });
 
 app.post("/api/persons", (req, res, next) => {
@@ -136,26 +135,29 @@ app.post("/api/persons", (req, res, next) => {
 
   const person = new Person({ name, number });
 
-  person.save()
-    .then(savedPerson => {
+  person
+    .save()
+    .then((savedPerson) => {
       res.json(savedPerson);
     })
-    .catch(error => next(error));
+    .catch((error) => next(error));
 });
 
 app.put("/api/persons/:id", (req, res, next) => {
   const { name, number } = req.body;
+  Person.findById(req.params.id)
+    .then((person) => {
+      if (!person) {
+        return res.status(404).end();
+      }
+      person.name = name;
+      person.number = number;
 
-  Person.findByIdAndUpdate(
-    req.params.id,
-    { name, number },
-    { new: true, runValidators: true }
-  )
-    .then(updatedPerson => {
-      console.log(updatedPerson);
-      res.json(updatedPerson.toJSON());
+      return person.save().then((updatedPerson) => {
+        res.json(updatedPerson);
+      });
     })
-    .catch(error => next(error));
+    .catch((error) => next(error));
 });
 
 const unknownEndpoint = (request, response) => {
